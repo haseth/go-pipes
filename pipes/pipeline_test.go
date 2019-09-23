@@ -3,6 +3,7 @@ package pipes
 import (
 	"bytes"
 	"log"
+	"strings"
 	"testing"
 )
 
@@ -49,7 +50,7 @@ func TestCommandExecute(t *testing.T) {
 	t.Run("Checking with incorrect bash command", func(t *testing.T) {
 		execCmd(t, &ipChan, &opChan, stdErr, []string{"lw", "test.txt"}, commandNotFound)
 	})
-
+	//failing
 	// t.Run("Checking with empty command", func(t *testing.T) {
 	// 	execCmd(t, &ipChan, &opChan, stdErr, []string{}, commandNil)
 	// })
@@ -63,16 +64,20 @@ func execCmd(t *testing.T, ipChan, opChan *chan *bytes.Buffer, stdErr *bytes.Buf
 		select {
 		case gotBuffer := <-*opChan:
 			got := gotBuffer.String()
-			if got != want {
+			if !strings.ContainsAny(got, want) {
 				t.Fatalf("pipeline execution failure got: %s want: %s", got, want)
 			}
+			goto TESTING
+
 		case errBuffer := <-stdErrChan:
 			got := errBuffer.String()
-			if got != want {
+			if !strings.ContainsAny(got, want) {
 				t.Fatalf("Should have received error,  got %s want %s", got, want)
 			}
+			goto TESTING
 		}
 	}
+TESTING:
 }
 
 func TestRun(t *testing.T) {

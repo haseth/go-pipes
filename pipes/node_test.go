@@ -3,11 +3,17 @@ package pipes
 import (
 	"bytes"
 	"log"
-	"reflect"
-	"strings"
 	"testing"
 )
 
+func EqualSlice(a, b []string) bool {
+	for in := range a {
+		if a[in] != b[in] {
+			return false
+		}
+	}
+	return true
+}
 func TestNewNode(t *testing.T) {
 	testStdErrBuff := new(bytes.Buffer)
 	testCmd := []string{"cat", "test.txt"}
@@ -16,10 +22,11 @@ func TestNewNode(t *testing.T) {
 		if err != nil {
 			log.Fatalf("Error creating new node" + err.Error())
 		}
-		p := string(strings.Join(cmd, " "))
-		if == node.stdin {
+		//TODO: is the right way to test the slices?
+		if !EqualSlice(node.cmd, testCmd) {
 			log.Fatalf("Error in intializing the node.cmd got %s want %s", node.cmd, testCmd)
 		}
+
 		if node.stderr != testStdErrBuff {
 			log.Fatalf("Error in intializing the buffer got %v want %v", node.stderr, testStdErrBuff)
 		}
@@ -57,7 +64,7 @@ func TestSetCommands(t *testing.T) {
 		if err != nil {
 			log.Fatalf("Error setting the command")
 		}
-		if reflect.DeepEqual(node.cmd, cmd) {
+		if !EqualSlice(node.cmd, cmd) {
 			log.Fatalf("Setting the command not working in SetCommands got %s want %s", node.cmd, cmd)
 		}
 	})
@@ -66,8 +73,6 @@ func TestSetCommands(t *testing.T) {
 		err := node.SetCommand(cmd)
 		if err == nil {
 			log.Fatalf("We should have got error for setting empty command.")
-		} else {
-
 		}
 	})
 
@@ -111,60 +116,3 @@ func TestNodeInput(t *testing.T) {
 		}
 	})
 }
-
-// func TestNodeOutput(t *testing.T) {
-// 	node := &Node{}
-// 	var OutChan chan *bytes.Buffer
-
-// 	go func(node *Node, OutChan chan *bytes.Buffer) {
-// 		OutBuff := new(bytes.Buffer)
-// 		node.stdout = OutBuff
-// 		node.Output(&OutChan)
-// 	}(node, OutChan)
-// 	b := <-OutChan
-
-// 	CheckTest(t, node.stdout, b, "Error in setting the address of buffer.")
-// }
-// func TestNode(t *testing.T) {
-// 	cmd := []string{"cat", "test.txt"}
-
-// 	stdErr := new(bytes.Buffer)
-// 	node, err := NewNode(cmd, stdErr)
-// 	if err != nil {
-// 		log.Fatalf("Error in allocating node")
-// 	}
-
-// 	InpBuff := new(bytes.Buffer)
-// 	//InpBuff.Write([]byte{""})
-// 	OutBuff := new(bytes.Buffer)
-// 	//var InpChannel chan *bytes.Buffer
-
-// 	// //we will put the address of the InpBuff on the channel..
-// 	// go func(InpBuff bytes.Buffer, InpChannel chan *bytes.Buffer){
-// 	// 	InpChannel <- & InpBuff
-// 	// }(InpBuff,InpChannel)
-// 	node.stdin = InpBuff
-// 	node.stdout = OutBuff
-// 	node.Process()
-
-// 	CheckTest(t, *OutBuff, "harsh seth", "Output string not matching after piping.")
-// 	//test 1: what if wrong command given
-// 	//test 2: what if no command given
-// }
-
-// func CheckTest(t *testing.T, got, want interface{}, err string) {
-// 	t.Helper()
-// 	if got != want {
-// 		t.Fatalf(err+"got %s wanted %s", got, want)
-// 	}
-// 	// switch v := got.(type) {
-// 	// case string:
-// 	// 	//check strings
-// 	// 	i
-// 	// 	fmt.Printf("Twice %v is %v\n", v, v*2)
-// 	// case string:
-// 	// 	fmt.Printf("%q is %v bytes long\n", v, len(v))
-// 	// default:
-// 	// 	fmt.Printf("I don't know about type %T!\n", v)
-// 	// }
-// }
