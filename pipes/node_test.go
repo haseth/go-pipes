@@ -1,35 +1,117 @@
 package pipes
 
-// func TestNewNode(t *testing.T) {
-// 	node := &Node{}
-// 	testIPBuff := new(bytes.Buffer)
-// 	testOPBuff := new(bytes.Buffer)
-// 	testStdErrBuff := new(bytes.Buffer)
+import (
+	"bytes"
+	"log"
+	"reflect"
+	"strings"
+	"testing"
+)
 
-// 	testCmd := []string{"cat", "test.txt"}
-// 	node = NewNode(testCmd, testStdErrBuff)
+func TestNewNode(t *testing.T) {
+	testStdErrBuff := new(bytes.Buffer)
+	testCmd := []string{"cat", "test.txt"}
+	t.Run("Running passsing the command", func(t *testing.T) {
+		node, err := NewNode(testCmd, testStdErrBuff)
+		if err != nil {
+			log.Fatalf("Error creating new node" + err.Error())
+		}
+		p := string(strings.Join(cmd, " "))
+		if == node.stdin {
+			log.Fatalf("Error in intializing the node.cmd got %s want %s", node.cmd, testCmd)
+		}
+		if node.stderr != testStdErrBuff {
+			log.Fatalf("Error in intializing the buffer got %v want %v", node.stderr, testStdErrBuff)
+		}
+	})
+	testCmd = []string{}
+	t.Run("Running passsing no command", func(t *testing.T) {
+		_, err := NewNode(testCmd, testStdErrBuff)
+		if err == nil {
+			log.Fatalf("We should have received the error passing empty command")
+		}
+		if err.Error() != commandNil {
+			log.Fatalf("Incorrect error received got %s want %s", err.Error(), commandNil)
+		}
+	})
+	// t.Run("Running passsing no buff", func(t *testing.T) {
+	// 	node, err := NewNode(testCmd, testStdErrBuff)
+	// 	if err == nil {
+	// 		log.Fatalf("We should have received the error passing empty command")
+	// 	}
+	// 	if err.Error() != commandNil {
+	// 		log.Fatalf("Incorrect error received got %s want %s", err.Error(), commandNil)
+	// 	}
+	// })
 
-// 	CheckTest(t, node.cmd, testCmd, "Error in intializing the node.cmd.")
-// 	CheckTest(t, node.stdin, testIPBuff, "Error in intializing the node.stdin buffer.")
-// 	CheckTest(t, node.stdout, testOPBuff, "Error in intializing the node.stdout buffer.")
+	//test 1: what if no cmd
+	//test2: what if no buf
+}
+func TestSetCommands(t *testing.T) {
+	cmd := []string{"testing", "command"}
+	node := &Node{}
+	//test1: passing command
+	//test2: passsing no command
+	t.Run("Testing with random command", func(t *testing.T) {
+		err := node.SetCommand(cmd)
+		if err != nil {
+			log.Fatalf("Error setting the command")
+		}
+		if reflect.DeepEqual(node.cmd, cmd) {
+			log.Fatalf("Setting the command not working in SetCommands got %s want %s", node.cmd, cmd)
+		}
+	})
+	cmd = []string{}
+	t.Run("Testing with no command", func(t *testing.T) {
+		err := node.SetCommand(cmd)
+		if err == nil {
+			log.Fatalf("We should have got error for setting empty command.")
+		} else {
 
-// 	//test 1: what if no cmd
-// }
-// func TestSetCommands(t *testing.T) {
-// 	cmd := []string{"testing", "command"}
-// 	node := &Node{}
-// 	node.SetCommand(cmd)
-// 	CheckTest(t, node.cmd, cmd, "Setting the command not working in SetCommands")
-// }
-// func TestNodeInput(t *testing.T) {
-// 	node := &Node{}
-// 	InpBuf := new(bytes.Buffer)
-// 	var InpChan chan *bytes.Buffer
-// 	go func(InpBuf *bytes.Buffer, InpChan chan *bytes.Buffer) { InpChan <- InpBuf }(InpBuf, InpChan)
-// 	node.Input(InpChan)
-// 	CheckTest(t, node.stdin, InpBuf, "Error in setting the address of buffer.")
+		}
+	})
 
-// }
+}
+func TestNodeInput(t *testing.T) {
+	node := &Node{}
+	InpBuf := new(bytes.Buffer)
+	var InpChan chan *bytes.Buffer
+	InpChan = make(chan *bytes.Buffer)
+
+	//TEST1: checking by sending the buffer address
+	//TEST2: checking by sending nill address.
+	// Test3: Not sending.. deadlock state handling
+
+	t.Run("Checking by sending buffer address", func(t *testing.T) {
+		//sending the buffer address to the IP channel
+		go func(InpChan chan *bytes.Buffer, InpBuf *bytes.Buffer) {
+			InpChan <- InpBuf
+		}(InpChan, InpBuf)
+
+		err := node.Input(&InpChan)
+		if err != nil {
+			log.Fatalf("Some error in receiving the input buffer.")
+		}
+		if node.stdin != InpBuf {
+			log.Fatalf("Err: difference in InpBuf and stdin got %s want %s", node.stdin, InpBuf)
+		}
+	})
+	t.Run("Checking by nil address", func(t *testing.T) {
+		//sending the nil address to the IP channel
+		go func(InpChan chan *bytes.Buffer, InpBuf *bytes.Buffer) {
+			InpChan <- InpBuf
+		}(InpChan, nil)
+
+		err := node.Input(&InpChan)
+		if err == nil {
+			log.Fatalf("Error should be received ")
+		}
+		if err.Error() != stdErrBufNil {
+			log.Fatalf("string got %s want %s", err.Error(), InpBuf)
+		}
+	})
+}
+
 // func TestNodeOutput(t *testing.T) {
 // 	node := &Node{}
 // 	var OutChan chan *bytes.Buffer
@@ -37,7 +119,7 @@ package pipes
 // 	go func(node *Node, OutChan chan *bytes.Buffer) {
 // 		OutBuff := new(bytes.Buffer)
 // 		node.stdout = OutBuff
-// 		node.Output(OutChan)
+// 		node.Output(&OutChan)
 // 	}(node, OutChan)
 // 	b := <-OutChan
 
@@ -45,7 +127,12 @@ package pipes
 // }
 // func TestNode(t *testing.T) {
 // 	cmd := []string{"cat", "test.txt"}
-// 	node := &Node{cmd: cmd}
+
+// 	stdErr := new(bytes.Buffer)
+// 	node, err := NewNode(cmd, stdErr)
+// 	if err != nil {
+// 		log.Fatalf("Error in allocating node")
+// 	}
 
 // 	InpBuff := new(bytes.Buffer)
 // 	//InpBuff.Write([]byte{""})
@@ -58,7 +145,6 @@ package pipes
 // 	// }(InpBuff,InpChannel)
 // 	node.stdin = InpBuff
 // 	node.stdout = OutBuff
-// 	node.SetCommand(cmd)
 // 	node.Process()
 
 // 	CheckTest(t, *OutBuff, "harsh seth", "Output string not matching after piping.")

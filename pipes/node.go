@@ -2,6 +2,7 @@ package pipes
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -14,6 +15,7 @@ import (
 //Node make input file
 
 const errorInCommand = "Error running the command"
+const stdErrBufNil = "Std Error buf nil"
 
 //Node ...
 type Node struct {
@@ -25,29 +27,40 @@ type Node struct {
 }
 
 //NewNode initialises the values.
-func NewNode(cmd []string, stderr *bytes.Buffer) *Node {
+func NewNode(cmd []string, stderr *bytes.Buffer) (*Node, error) {
+
 	n := new(Node)
+	if len(cmd) == 0 {
+		return nil, errors.New(commandNil)
+	}
+	if stderr == nil {
+		return nil, errors.New(stdErrBufNil)
+	}
 	n.cmd = cmd
 	n.stderr = stderr
-	return n
+
+	return n, nil
 }
 
 //SetCommand ...
-func (n *Node) SetCommand(command []string) {
+func (n *Node) SetCommand(command []string) error {
 	//TODO: check if commands are all good.
+	if len(command) == 0 {
+		return errors.New(commandNil)
+	}
 	n.cmd = command
-	fmt.Println(command)
+	return nil
 }
 
 //Input ...
-func (n *Node) Input(ip *chan *bytes.Buffer) {
+func (n *Node) Input(ip *chan *bytes.Buffer) error {
 	//take stdibytes.Buffer
 	//TODO: check if buffer nil
 	n.stdin = <-*ip
-
 	if n.stdin == nil {
-		fmt.Println("Did not receive input buffer correctly")
+		return errors.New(stdErrBufNil)
 	}
+	return nil
 }
 
 //Process ...
@@ -73,8 +86,11 @@ func (n *Node) Process() {
 }
 
 //Output ...
-func (n *Node) Output(op *chan *bytes.Buffer) {
+func (n *Node) Output(op *chan *bytes.Buffer) error {
 	//TODO: Check if nil
 	*op <- n.stdout
-
+	if *op == nil {
+		return errors.New(stdErrBufNil)
+	}
+	return nil
 }

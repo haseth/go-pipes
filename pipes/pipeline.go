@@ -95,7 +95,11 @@ func cmdExecute(command []string, ip, op *chan *bytes.Buffer, stderr *bytes.Buff
 		stderr.Write([]byte(e))
 		stdErrChan <- stderr
 	}
-	node := NewNode(command, stderr)
+	node, err := NewNode(command, stderr)
+	if err != nil {
+		stderr.Write([]byte(err.Error()))
+		stdErrChan <- stderr
+	}
 	//cmdStruct.SetCommand(command)
 	node.Input(ip)
 	node.Process()
