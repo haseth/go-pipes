@@ -2,8 +2,15 @@ package pipes
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 )
+
+const commandNotFound string = "Command not found"
+const commandNil = "Command cannot be empty"
+const negativeChannels = "Negative number of commands cannot be passed."
+
+var stdErrChan = make(chan *bytes.Buffer)
 
 // type Commander interface{
 // 	Execute() ([]byte,error)
@@ -24,43 +31,55 @@ import (
 //Pipeline ...
 type Pipeline struct {
 	commands [][]string
+	stderr   *bytes.Buffer
 }
 
 //Run ...
 func (p *Pipeline) Run() (string, error) {
 	numOfCommands := len(p.commands)
-	//exec.Command("ls").String()
 	//Array of channels of bytes.Buffer one more than num of commands.
+
 	channels, err := makeChannels(numOfCommands)
 	if err != nil {
 		fmt.Println("Somme issue in creating channels")
-		panic(err)
+		return "", errors.New("Error in creating channel")
 	}
 	go firstStdin(&channels[0])
-	//first stdin file
-	// go func(channels []chan *bytes.Buffer) {
-	// 	b := new(bytes.Buffer)
-	// 	channels[0] <- b
-	// }(channels)
 
 	temp := 0
 	for index, cmd := range p.commands {
 		//new struct for each command with input channels[i] as input and channels[i+1] as outputs
-		go cmdExecute(cmd, channels[index], channels[index+1], index)
+		go cmdExecute(cmd, &channels[index], &channels[index+1], p.stderr)
 		temp = index + 1
 	}
 	//last channel should retrieve the output.
-	f := <-channels[temp]
-	return f.String(), nil
+	for {
+		select {
+		case f := <-channels[temp]:
+			return f.String(), nil
+
+		case e := <-stdErrChan:
+			return "", errors.New(e.String())
+		}
+	}
 }
 
 //NewPipeline ...
 func NewPipeline(commands [][]string) *Pipeline {
-	return &Pipeline{commands: commands}
+	return &Pipeline{
+		commands: commands,
+		stderr:   new(bytes.Buffer),
+	}
 }
 
 //makeChannels initializes n+1 number of channels
 func makeChannels(n int) ([]chan *bytes.Buffer, error) {
+	if n == 0 {
+		return nil, errors.New(commandNil)
+	}
+	if n < 0 {
+		return nil, errors.New(negativeChannels)
+	}
 	channels := make([]chan *bytes.Buffer, n+1)
 	//var f *os.File
 	for index := range channels {
@@ -69,22 +88,22 @@ func makeChannels(n int) ([]chan *bytes.Buffer, error) {
 	//TODO: if any error could occur.
 	return channels, nil
 }
-func cmdExecute(command []string, ip, op chan *bytes.Buffer, index int) {
-	cmdStruct := &Node{}
-	cmdStruct.SetCommand(command)
-	cmdStruct.Input(ip)
-	cmdStruct.Process(index)
-	cmdStruct.Output(op)
+func cmdExecute(command []string, ip, op *chan *bytes.Buffer, stderr *bytes.Buffer) {
+	//will give address of stderr to each nodes.
+	if len(command) == 0 {
+		e := commandNil
+		stderr.Write([]byte(e))
+		stdErrChan <- stderr
+	}
+	node := NewNode(command, stderr)
+	//cmdStruct.SetCommand(command)
+	node.Input(ip)
+	node.Process()
+	//TODO: need to properly take care of the output/err
+	node.Output(op)
 }
 func firstStdin(channel *chan *bytes.Buffer) {
-	//some pointer checking
-	// if channel != nil {
-	// 	b := new(bytes.Buffer)
-	// 	*channel <- b
-	// 	return nil
-	// } else {
-	// 	return "Did not get address for first stdin channel"
-	// }
+
 	b := new(bytes.Buffer)
 	*channel <- b
 }

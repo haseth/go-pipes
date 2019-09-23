@@ -34,7 +34,7 @@ func main() {
 		[]string{"cat", "/Users/haseth/testing/go-pipes/pipes/test.txt"},
 		[]string{"grep", "-i", "harsh"},
 		[]string{"wc", "-clw"},
-		//[]string{"ls", "-l"},
+		[]string{"ls", "-ltrh"},
 		// []string{"sort"},
 		// []string{"less"},
 	}
@@ -45,7 +45,7 @@ func main() {
 	//Output
 	out, err := pipe.Run()
 	if err != nil {
-		fmt.Println("Some issue")
+		fmt.Println("Some issue" + err.Error())
 	}
 	fmt.Println(out)
 }

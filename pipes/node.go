@@ -4,24 +4,31 @@ import (
 	"bytes"
 	"fmt"
 	"os/exec"
+	"strings"
 )
 
 //Buffer ...
-type Buffer *bytes.Buffer
+//Need help
+//type Buffer bytes.Buffer
 
 //Node make input file
+
+const errorInCommand = "Error running the command"
+
+//Node ...
 type Node struct {
-	stdin  Buffer
+	stdin  *bytes.Buffer
 	cmd    []string
-	stdout Buffer
+	stdout *bytes.Buffer
+	//common for entire pipeline
+	stderr *bytes.Buffer
 }
 
 //NewNode initialises the values.
-func NewNode(cmd []string, stdin, stdout Buffer) *Node {
+func NewNode(cmd []string, stderr *bytes.Buffer) *Node {
 	n := new(Node)
-	n.stdin = stdin
 	n.cmd = cmd
-	n.stdout = stdout
+	n.stderr = stderr
 	return n
 }
 
@@ -33,33 +40,41 @@ func (n *Node) SetCommand(command []string) {
 }
 
 //Input ...
-func (n *Node) Input(ip chan Buffer) {
+func (n *Node) Input(ip *chan *bytes.Buffer) {
 	//take stdibytes.Buffer
 	//TODO: check if buffer nil
-	n.stdin = <-ip
-	fmt.Println(" Taken the buffer")
+	n.stdin = <-*ip
+
+	if n.stdin == nil {
+		fmt.Println("Did not receive input buffer correctly")
+	}
 }
 
 //Process ...
 func (n *Node) Process() {
 	//process the command  by setting the input/output streaming file
 	//TODO: cheking for error in stderr
-	outputBuffer := new(Buffer)
+
+	outputBuffer := new(bytes.Buffer)
 	execCmd := exec.Command(n.cmd[0], n.cmd[1:]...)
 
 	execCmd.Stdin = n.stdin
-
 	execCmd.Stdout = outputBuffer
 
+	fmt.Println(outputBuffer)
 	err := execCmd.Run()
 	if err != nil {
 		fmt.Println("Error in running file " + err.Error())
+		e := "Error in running file " + strings.Join(n.cmd, " ") + err.Error()
+		n.stderr.Write([]byte(e))
+		stdErrChan <- n.stderr
 	}
 	n.stdout = outputBuffer
 }
 
 //Output ...
-func (n *Node) Output(op chan Buffer) {
+func (n *Node) Output(op *chan *bytes.Buffer) {
 	//TODO: Check if nil
-	op <- n.stdout
+	*op <- n.stdout
+
 }
