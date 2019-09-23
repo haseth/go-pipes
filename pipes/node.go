@@ -17,7 +17,7 @@ import (
 const errorInCommand = "Error running the command"
 const stdErrBufNil = "Std Error buf nil"
 
-//Node ...
+//Node represents single command with IP/OP buffers.
 type Node struct {
 	stdin  *bytes.Buffer
 	cmd    []string
@@ -42,17 +42,7 @@ func NewNode(cmd []string, stderr *bytes.Buffer) (*Node, error) {
 	return n, nil
 }
 
-//SetCommand ...
-func (n *Node) SetCommand(command []string) error {
-	//TODO: check if commands are all good.
-	if len(command) == 0 {
-		return errors.New(commandNil)
-	}
-	n.cmd = command
-	return nil
-}
-
-//Input ...
+//Input takes ip buffer address
 func (n *Node) Input(ip *chan *bytes.Buffer) error {
 	//take stdibytes.Buffer
 	//TODO: check if buffer nil
@@ -63,7 +53,7 @@ func (n *Node) Input(ip *chan *bytes.Buffer) error {
 	return nil
 }
 
-//Process ...
+//Process runs the commad attaching stdin, stdout and stderr.
 func (n *Node) Process() {
 	//process the command  by setting the input/output streaming file
 	//TODO: cheking for error in stderr
@@ -73,8 +63,8 @@ func (n *Node) Process() {
 
 	execCmd.Stdin = n.stdin
 	execCmd.Stdout = outputBuffer
+	execCmd.Stderr = n.stderr
 
-	fmt.Println(outputBuffer)
 	err := execCmd.Run()
 	if err != nil {
 		fmt.Println("Error in running file " + err.Error())
@@ -85,7 +75,7 @@ func (n *Node) Process() {
 	n.stdout = outputBuffer
 }
 
-//Output ...
+//Output produces the address of output buffer.
 func (n *Node) Output(op *chan *bytes.Buffer) error {
 	//TODO: Check if nil
 	*op <- n.stdout

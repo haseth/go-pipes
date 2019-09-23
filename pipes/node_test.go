@@ -41,41 +41,18 @@ func TestNewNode(t *testing.T) {
 			log.Fatalf("Incorrect error received got %s want %s", err.Error(), commandNil)
 		}
 	})
-	// t.Run("Running passsing no buff", func(t *testing.T) {
-	// 	node, err := NewNode(testCmd, testStdErrBuff)
-	// 	if err == nil {
-	// 		log.Fatalf("We should have received the error passing empty command")
-	// 	}
-	// 	if err.Error() != commandNil {
-	// 		log.Fatalf("Incorrect error received got %s want %s", err.Error(), commandNil)
-	// 	}
-	// })
+	t.Run("Running passsing no buff", func(t *testing.T) {
+		_, err := NewNode(testCmd, testStdErrBuff)
+		if err == nil {
+			log.Fatalf("We should have received the error passing empty command")
+		}
+		if err.Error() != commandNil {
+			log.Fatalf("Incorrect error received got %s want %s", err.Error(), commandNil)
+		}
+	})
 
 	//test 1: what if no cmd
 	//test2: what if no buf
-}
-func TestSetCommands(t *testing.T) {
-	cmd := []string{"testing", "command"}
-	node := &Node{}
-	//test1: passing command
-	//test2: passsing no command
-	t.Run("Testing with random command", func(t *testing.T) {
-		err := node.SetCommand(cmd)
-		if err != nil {
-			log.Fatalf("Error setting the command")
-		}
-		if !EqualSlice(node.cmd, cmd) {
-			log.Fatalf("Setting the command not working in SetCommands got %s want %s", node.cmd, cmd)
-		}
-	})
-	cmd = []string{}
-	t.Run("Testing with no command", func(t *testing.T) {
-		err := node.SetCommand(cmd)
-		if err == nil {
-			log.Fatalf("We should have got error for setting empty command.")
-		}
-	})
-
 }
 func TestNodeInput(t *testing.T) {
 	node := &Node{}
@@ -85,7 +62,7 @@ func TestNodeInput(t *testing.T) {
 
 	//TEST1: checking by sending the buffer address
 	//TEST2: checking by sending nill address.
-	// Test3: Not sending.. deadlock state handling
+	//Test3: Not sending.. deadlock state handling
 
 	t.Run("Checking by sending buffer address", func(t *testing.T) {
 		//sending the buffer address to the IP channel

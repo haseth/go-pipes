@@ -28,16 +28,16 @@ var stdErrChan = make(chan *bytes.Buffer)
 // 	res,err:=os.exec("grep","")
 // }
 
-//Pipeline ...
+//Pipeline contains [][]commands and buffer for entire pipeline to store errors.
 type Pipeline struct {
 	commands [][]string
 	stderr   *bytes.Buffer
 }
 
-//Run ...
+//Run starts the execution of the pipeline by creating
+//n nodes and n+1 channels which connects the nodes.
 func (p *Pipeline) Run() (string, error) {
 	numOfCommands := len(p.commands)
-	//Array of channels of bytes.Buffer one more than num of commands.
 
 	channels, err := makeChannels(numOfCommands)
 	if err != nil {
@@ -49,6 +49,7 @@ func (p *Pipeline) Run() (string, error) {
 	temp := 0
 	for index, cmd := range p.commands {
 		//new struct for each command with input channels[i] as input and channels[i+1] as outputs
+		//pipeline stderr is comman buffer for storing errors.
 		go cmdExecute(cmd, &channels[index], &channels[index+1], p.stderr)
 		temp = index + 1
 	}
@@ -64,7 +65,7 @@ func (p *Pipeline) Run() (string, error) {
 	}
 }
 
-//NewPipeline ...
+//NewPipeline intializes a Pipeline struct.
 func NewPipeline(commands [][]string) *Pipeline {
 	return &Pipeline{
 		commands: commands,
@@ -72,7 +73,7 @@ func NewPipeline(commands [][]string) *Pipeline {
 	}
 }
 
-//makeChannels initializes n+1 number of channels
+//makeChannels initializes n+1 number of channels for n commands.
 func makeChannels(n int) ([]chan *bytes.Buffer, error) {
 	if n == 0 {
 		return nil, errors.New(commandNil)
@@ -81,33 +82,32 @@ func makeChannels(n int) ([]chan *bytes.Buffer, error) {
 		return nil, errors.New(negativeChannels)
 	}
 	channels := make([]chan *bytes.Buffer, n+1)
-	//var f *os.File
 	for index := range channels {
 		channels[index] = make(chan *bytes.Buffer)
 	}
-	//TODO: if any error could occur.
 	return channels, nil
 }
+
+//cmdExecute takes care for execution of each command.
 func cmdExecute(command []string, ip, op *chan *bytes.Buffer, stderr *bytes.Buffer) {
-	//will give address of stderr to each nodes.
 	if len(command) == 0 {
 		e := commandNil
 		stderr.Write([]byte(e))
 		stdErrChan <- stderr
+		return
 	}
 	node, err := NewNode(command, stderr)
 	if err != nil {
 		stderr.Write([]byte(err.Error()))
 		stdErrChan <- stderr
 	}
-	//cmdStruct.SetCommand(command)
 	node.Input(ip)
 	node.Process()
-	//TODO: need to properly take care of the output/err
 	node.Output(op)
 }
-func firstStdin(channel *chan *bytes.Buffer) {
 
+//firstStdin initializes first cmd's IP buffer.
+func firstStdin(channel *chan *bytes.Buffer) {
 	b := new(bytes.Buffer)
 	*channel <- b
 }
