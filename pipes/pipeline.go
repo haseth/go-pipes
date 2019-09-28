@@ -3,34 +3,22 @@ package pipes
 import (
 	"bytes"
 	"errors"
-	"fmt"
 )
 
-const commandNotFound string = "Command not found"
+const commandNotFound string = "not found"
 const commandNil = "Command cannot be empty"
 const negativeChannels = "Negative number of commands cannot be passed."
 
 var stdErrChan = make(chan *bytes.Buffer)
 
-// type Commander interface{
-// 	Execute() ([]byte,error)
-// }
-
-// type CatCommand struct{}
-
-// func (c *CatCommand) Execute() ([]byte,error){
-// 	res,err:=os.exec("cat","")
-// }
-
-// type GrepCommand struct{}
-
-// func (c *GrepCommand) Execute() ([]byte,error){
-// 	res,err:=os.exec("grep","")
-// }
+//Commander ...
+type Commander interface {
+	Execute(stdin, stdout *bytes.Buffer) error
+}
 
 //Pipeline contains [][]commands and buffer for entire pipeline to store errors.
 type Pipeline struct {
-	commands [][]string
+	commands []Commander
 	stderr   *bytes.Buffer
 }
 
@@ -38,14 +26,16 @@ type Pipeline struct {
 //n nodes and n+1 channels which connects the nodes.
 func (p *Pipeline) Run() (string, error) {
 	numOfCommands := len(p.commands)
+	if numOfCommands == 0 {
+		return "", errors.New(commandNil)
+	}
 
 	channels, err := makeChannels(numOfCommands)
 	if err != nil {
-		fmt.Println("Somme issue in creating channels")
-		return "", errors.New("Error in creating channel")
+		return "", errors.New(err.Error())
 	}
-	go firstStdin(&channels[0])
 
+	go firstStdin(&channels[0])
 	temp := 0
 	for index, cmd := range p.commands {
 		//new struct for each command with input channels[i] as input and channels[i+1] as outputs
@@ -53,6 +43,7 @@ func (p *Pipeline) Run() (string, error) {
 		go cmdExecute(cmd, &channels[index], &channels[index+1], p.stderr)
 		temp = index + 1
 	}
+
 	//last channel should retrieve the output.
 	for {
 		select {
@@ -66,7 +57,7 @@ func (p *Pipeline) Run() (string, error) {
 }
 
 //NewPipeline intializes a Pipeline struct.
-func NewPipeline(commands [][]string) *Pipeline {
+func NewPipeline(commands []Commander) *Pipeline {
 	return &Pipeline{
 		commands: commands,
 		stderr:   new(bytes.Buffer),
@@ -89,12 +80,11 @@ func makeChannels(n int) ([]chan *bytes.Buffer, error) {
 }
 
 //cmdExecute takes care for execution of each command.
-func cmdExecute(command []string, ip, op *chan *bytes.Buffer, stderr *bytes.Buffer) {
-	if len(command) == 0 {
+func cmdExecute(command Commander, ip, op *chan *bytes.Buffer, stderr *bytes.Buffer) {
+	if command == nil {
 		e := commandNil
 		stderr.Write([]byte(e))
 		stdErrChan <- stderr
-		return
 	}
 	node, err := NewNode(command, stderr)
 	if err != nil {
