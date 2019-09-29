@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"os/exec"
+	"strings"
 	"testing"
 )
 
@@ -84,9 +85,12 @@ func TestNodeOutput(t *testing.T) {
 		}
 	})
 	node.stdout = nil
-	t.Run("Checking by sending buffer address", func(t *testing.T) {
-		//sending the buffer address to the IP channel
-
+	t.Run("Checking by sending nil address", func(t *testing.T) {
+		//sending the nil address to the IP channel
+		var OpBuff *bytes.Buffer
+		go func(OpChan chan *bytes.Buffer, OpBuf *bytes.Buffer) {
+			OpBuff = <-OpChan
+		}(opChan, OpBuff)
 		err := node.Output(&opChan)
 		if err == nil {
 			log.Fatalf("Should have received error passing nill in stdout.")
@@ -121,10 +125,14 @@ func TestProcessNode(t *testing.T) {
 		if err == nil {
 			log.Fatalf("We should face any error running the incorrect command: %s", command)
 		}
+		if !strings.Contains(err.Error(), "not found") {
+			log.Fatalf("string got %s want %s", err.Error(), "Command not found")
+		}
+
 	})
 }
 
-//We can mock this as well.
+//TODO: Create a mock of it.
 type OsExec struct {
 	Cmds []string
 }
