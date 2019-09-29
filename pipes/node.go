@@ -46,6 +46,8 @@ func NewNode(cmd Commander, stderr *bytes.Buffer) (*Node, error) {
 func (n *Node) Input(ip *chan *bytes.Buffer) error {
 	n.stdin = <-*ip
 	if n.stdin == nil {
+		ipBuffer := new(bytes.Buffer)
+		n.stdin = ipBuffer
 		return errors.New(stdInBufNil)
 	}
 	return nil
@@ -60,8 +62,7 @@ func (n *Node) Process() error {
 	}
 	err := n.cmd.Execute(n.stdin, n.stdout)
 	if err != nil {
-		n.stderr.Write([]byte(err.Error()))
-		//stdErrChan <- n.stderr
+		return errors.New(err.Error())
 	}
 	return nil
 }
@@ -69,6 +70,9 @@ func (n *Node) Process() error {
 //Output produces the address of output buffer.
 func (n *Node) Output(op *chan *bytes.Buffer) error {
 	if n.stdout == nil {
+		outputBuffer := new(bytes.Buffer)
+		n.stdout = outputBuffer
+		*op <- n.stdout
 		return errors.New(stdOutBufNil)
 	}
 	*op <- n.stdout

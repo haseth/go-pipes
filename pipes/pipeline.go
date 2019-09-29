@@ -44,16 +44,18 @@ func (p *Pipeline) Run() (string, error) {
 		temp = index + 1
 	}
 
-	//last channel should retrieve the output.
-	for {
-		select {
-		case f := <-channels[temp]:
-			return f.String(), nil
+	//There can be two outputs
+	//1. from stdout
+	//2. from stderr
 
-		case e := <-stdErrChan:
-			return "", errors.New(e.String())
-		}
-	}
+	o := make([]byte, 100)
+	e := make([]byte, 1000)
+
+	//last channel should retrieve the output.
+	f := <-channels[temp]
+	f.Read(o)
+	p.stderr.Read(e)
+	return string(o), errors.New(string(e))
 }
 
 //NewPipeline intializes a Pipeline struct.
@@ -81,19 +83,32 @@ func makeChannels(n int) ([]chan *bytes.Buffer, error) {
 
 //cmdExecute takes care for execution of each command.
 func cmdExecute(command Commander, ip, op *chan *bytes.Buffer, stderr *bytes.Buffer) {
-	if command == nil {
-		e := commandNil
-		stderr.Write([]byte(e))
-		stdErrChan <- stderr
-	}
+	// if command == nil {
+	// 	e := errors.New(commandNil)
+	// 	commitError(e, stderr)
+	// 	return
+	// }
 	node, err := NewNode(command, stderr)
 	if err != nil {
-		stderr.Write([]byte(err.Error()))
-		stdErrChan <- stderr
+		commitError(err, stderr)
 	}
-	node.Input(ip)
-	node.Process()
-	node.Output(op)
+	if err = node.Input(ip); err != nil {
+
+		commitError(err, stderr)
+	}
+	if err = node.Process(); err != nil {
+		commitError(err, stderr)
+	}
+	if err = node.Output(op); err != nil {
+		commitError(err, stderr)
+	}
+}
+func commitError(err error, stderr *bytes.Buffer) {
+	//fmt.Println(err.Error())
+	_, e := stderr.Write([]byte(err.Error()))
+	if e != nil {
+		return
+	}
 }
 
 //firstStdin initializes first cmd's IP buffer.
