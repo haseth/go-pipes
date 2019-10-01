@@ -3,7 +3,8 @@ Implementing pipes in Go.
 
 
 # Example of Nodes
-wget stdin -> stdout (Node 1) <pipe> searchLinks stdin -> stdout (Node 2) <pipe> whatElseYouWantToDo stdin -> stdout (Node 3) 
+wget "something.com" <pipe> filterLinks <pipe> whatElseYouWantToDo 
+	Node 1         |        Node2      |      Node3  
 
 Display stdout.
 
