@@ -3,8 +3,10 @@ Implementing pipes in Go.
 
 
 # Example of Nodes
+``` 
 wget "something.com" <pipe> filterLinks <pipe> whatElseYouWantToDo 
-	Node 1         |        Node2      |      Node3  
+```
+Node 1         |        Node2      |      Node3  
 
 Display stdout.
 
