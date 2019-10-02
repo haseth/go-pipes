@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"help/go-pipes/pipes"
+	"help/go-pipes"
 	"os/exec"
 )
 
