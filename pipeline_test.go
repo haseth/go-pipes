@@ -2,6 +2,7 @@ package pipes
 
 import (
 	"bytes"
+	"log"
 	"strings"
 	"testing"
 )
@@ -69,34 +70,50 @@ func execCmd(t *testing.T, ipChan, opChan *chan *bytes.Buffer, stdErr *bytes.Buf
 
 }
 
-// func TestRunWithCorrectCommand(t *testing.T) {
-// 	commands := []Commander{
-// 		&OsExec{[]string{"echo", "hello"}},
-// 	}
-// 	want := "hello"
-// 	pipe := NewPipeline(commands)
-// 	// out, err := pipe.Run()
-// 	// if err.Error() != "" {
-// 	// 	log.Fatalf("Error received, got %s, want %s", err.Error(), want)
-// 	// }
-// 	// if !strings.Contains(out, want) {
-// 	// 	log.Fatalf("Should have received error, got %s, want %s", out, want)
-// 	// }
+func TestRunWithCorrectCommand(t *testing.T) {
+	commands := []Commander{
+		&OsExec{[]string{"echo", "hello"}},
+	}
+	want := "hello"
+	pipe := NewPipeline(commands)
+	out, _ := pipe.Run()
+	// if err.Error() != "" {
+	// 	log.Fatalf("Error received, got %s, want %s", err.Error(), want)
+	// }
+	if !strings.Contains(out, want) {
+		log.Fatalf("Error in running command, got %s, want %s", out, want)
+	}
+}
 
-// 	// commands = []Commander{}
-// 	// pipe = NewPipeline(commands)
-// 	// t.Run("Sending 0 commands", func(t *testing.T) {
-// 	// 	runCmd(pipe, commands, commandNil)
-// 	// })
+func TestRunWithInCorrectCommand(t *testing.T) {
+	commands := []Commander{
+		&OsExec{[]string{"lsw", "hello"}},
+	}
+	want := commandNotFound
+	pipe := NewPipeline(commands)
+	_, err := pipe.Run()
+	if err.Error() == "" {
+		log.Fatalf("Error received, got %s, want %s", err.Error(), want)
+	}
+	if !strings.Contains(err.Error(), want) {
+		log.Fatalf("Error in running command, got %s, want %s", err.Error(), want)
+	}
+}
 
-// 	// commands = []Commander{
-// 	// 	&OsExec{[]string{"lsw"}},
-// 	// }
-// 	// pipe = NewPipeline(commands)
-// 	// t.Run("Sending wrong commands", func(t *testing.T) {
-// 	// 	runCmd(pipe, commands, commandNotFound)
-// 	// })
+// commands = []Commander{}
+// pipe = NewPipeline(commands)
+// t.Run("Sending 0 commands", func(t *testing.T) {
+// 	runCmd(pipe, commands, commandNil)
+// })
+
+// commands = []Commander{
+// 	&OsExec{[]string{"lsw"}},
 // }
+// pipe = NewPipeline(commands)
+// t.Run("Sending wrong commands", func(t *testing.T) {
+// 	runCmd(pipe, commands, commandNotFound)
+// })
+//}
 
 // func runCmd(pipe *Pipeline, commands []Commander, want string) {
 // 	out, err := pipe.Run()

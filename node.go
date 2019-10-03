@@ -17,9 +17,11 @@ const (
 	stdOutBufNil   = "StdOut buf nil"
 )
 
-//Processor ...
-type Processor interface {
+//NodeState ...
+type NodeState interface {
+	Input(*chan *bytes.Buffer) error
 	Process()
+	Output(op *chan *bytes.Buffer) error
 }
 
 //Node represents single command with IP/OP buffers.
@@ -39,6 +41,7 @@ func NewNode(cmd Commander, stderr *bytes.Buffer) (*Node, error) {
 	}
 	n.cmd = cmd
 	n.stderr = stderr
+	n.stdout = new(bytes.Buffer)
 	return n, nil
 }
 
@@ -46,6 +49,7 @@ func NewNode(cmd Commander, stderr *bytes.Buffer) (*Node, error) {
 func (n *Node) Input(ip *chan *bytes.Buffer) error {
 	n.stdin = <-*ip
 	if n.stdin == nil {
+		//as next state will use this as stdin.
 		ipBuffer := new(bytes.Buffer)
 		n.stdin = ipBuffer
 		return errors.New(stdInBufNil)
@@ -55,8 +59,6 @@ func (n *Node) Input(ip *chan *bytes.Buffer) error {
 
 //Process runs the commad attaching stdin, stdout and stderr.
 func (n *Node) Process() error {
-	outputBuffer := new(bytes.Buffer)
-	n.stdout = outputBuffer
 	if n.stdout == nil && n.stdin == nil && n.stderr == nil && n.cmd == nil {
 		return errors.New("Buffers/State cannot be empty")
 	}
