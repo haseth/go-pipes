@@ -4,15 +4,15 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"help/go-pipes"
 	"os/exec"
+
+	"github.com/pipes"
 )
 
 func main() {
 	states := []pipes.Commander{
-		&OsCommand{cmd: []string{"sent", "google"}}, //wrong OS command
-		&OsCommand{cmd: []string{"curl", "google.com"}},
-		&OsCommand{cmd: []string{"grep", "google"}},
+		&GetURL{url: "https://curl.haxx.se"},
+		&OsCommand{cmd: []string{"grep", "curl"}},
 	}
 	//Create a pipeline for executing commands
 	pipe := pipes.NewPipeline(states)
@@ -31,6 +31,23 @@ type OsCommand struct {
 //Execute ...
 func (o *OsCommand) Execute(stdin, stdout *bytes.Buffer) error {
 	cmd := exec.Command(o.cmd[0], o.cmd[1:]...)
+	cmd.Stdin = stdin
+	cmd.Stdout = stdout
+	err := cmd.Run()
+	if err != nil {
+		return errors.New("Error in running the command:  " + err.Error())
+	}
+	return nil
+}
+
+//GetURL ...
+type GetURL struct {
+	url string
+}
+
+//Execute ...
+func (g *GetURL) Execute(stdin, stdout *bytes.Buffer) error {
+	cmd := exec.Command("curl", g.url)
 	cmd.Stdin = stdin
 	cmd.Stdout = stdout
 	err := cmd.Run()

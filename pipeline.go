@@ -8,12 +8,21 @@ import (
 const commandNotFound string = "not found"
 const commandNil = "Command cannot be empty"
 const negativeChannels = "Negative number of commands cannot be passed."
+const buffSize = 10000
 
 var stdErrChan = make(chan *bytes.Buffer)
 
 //Commander ...
 type Commander interface {
 	Execute(stdin, stdout *bytes.Buffer) error
+}
+
+//NewPipeline intializes a Pipeline struct.
+func NewPipeline(commands []Commander) *Pipeline {
+	return &Pipeline{
+		commands: commands,
+		stderr:   new(bytes.Buffer),
+	}
 }
 
 //Pipeline contains [][]commands and buffer for entire pipeline to store errors.
@@ -48,22 +57,14 @@ func (p *Pipeline) Run() (string, error) {
 	//1. from stdout
 	//2. from stderr
 
-	o := make([]byte, 100)
-	e := make([]byte, 1000)
+	o := make([]byte, buffSize)
+	e := make([]byte, buffSize)
 
 	//last channel should retrieve the output.
 	f := <-channels[temp]
 	f.Read(o)
 	p.stderr.Read(e)
 	return string(o), errors.New(string(e))
-}
-
-//NewPipeline intializes a Pipeline struct.
-func NewPipeline(commands []Commander) *Pipeline {
-	return &Pipeline{
-		commands: commands,
-		stderr:   new(bytes.Buffer),
-	}
 }
 
 //makeChannels initializes n+1 number of channels for n commands.
@@ -83,17 +84,11 @@ func makeChannels(n int) ([]chan *bytes.Buffer, error) {
 
 //cmdExecute takes care for execution of each command.
 func cmdExecute(command Commander, ip, op *chan *bytes.Buffer, stderr *bytes.Buffer) {
-	// if command == nil {
-	// 	e := errors.New(commandNil)
-	// 	commitError(e, stderr)
-	// 	return
-	// }
 	node, err := NewNode(command, stderr)
 	if err != nil {
 		commitError(err, stderr)
 	}
 	if err = node.Input(ip); err != nil {
-
 		commitError(err, stderr)
 	}
 	if err = node.Process(); err != nil {
