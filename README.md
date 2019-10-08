@@ -37,7 +37,8 @@ Pipe different states
 
 ```
 states := []pipes.Commander{
-		&OsCommand{cmd: []string{"curl", "google.com"}},
+			&GetURL{url: "https://curl.haxx.se"},
+			&OsCommand{cmd: []string{"grep", "curl"}},
 }
 
 pipe := pipes.NewPipeline(states)
