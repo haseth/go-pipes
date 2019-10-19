@@ -5,11 +5,6 @@ import (
 	"errors"
 )
 
-//Buffer ...
-//Need help
-//type Buffer bytes.Buffer
-
-//Node make input file
 const (
 	errorInCommand = "Error running the command"
 	stdErrBufNil   = "Std Error buf nil"
@@ -17,7 +12,7 @@ const (
 	stdOutBufNil   = "StdOut buf nil"
 )
 
-//NodeState ...
+//NodeState extracts node functionality
 type NodeState interface {
 	Input(*chan *bytes.Buffer) error
 	Process()
@@ -39,9 +34,12 @@ func NewNode(cmd Commander, stderr *bytes.Buffer) (*Node, error) {
 	if n == nil {
 		return nil, errors.New("Error in creating Node")
 	}
+
+	//define node values
 	n.cmd = cmd
 	n.stderr = stderr
 	n.stdout = new(bytes.Buffer)
+
 	return n, nil
 }
 
@@ -54,18 +52,23 @@ func (n *Node) Input(ip *chan *bytes.Buffer) error {
 		n.stdin = ipBuffer
 		return errors.New(stdInBufNil)
 	}
+
 	return nil
 }
 
 //Process runs the commad attaching stdin, stdout and stderr.
 func (n *Node) Process() error {
+	//error checking
 	if n.stdout == nil && n.stdin == nil && n.stderr == nil && n.cmd == nil {
 		return errors.New("Buffers/State cannot be empty")
 	}
+
+	//execute
 	err := n.cmd.Execute(n.stdin, n.stdout)
 	if err != nil {
 		return errors.New(err.Error())
 	}
+
 	return nil
 }
 
@@ -78,5 +81,6 @@ func (n *Node) Output(op *chan *bytes.Buffer) error {
 		return errors.New(stdOutBufNil)
 	}
 	*op <- n.stdout
+
 	return nil
 }
