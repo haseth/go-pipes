@@ -7,15 +7,15 @@ GO-Pipes is a library to implement ```Linux pipes``` using Go.
 Each node should have a ```Execute``` method which should define how data will be processed by node taking from ```stdin``` and putting back to ```stdout```. 
 
 ```
-type Commander interface {
+type Executer interface {
 	Execute(stdin, stdout *bytes.Buffer) error
 }
 ```
 
 ```
-type myNode struct{}
+type myNodeExecuter struct{}
 
-func (s *myNode) Execute(stdin, stdout *bytes.Buffer){
+func (s *myNodeExecuter) Execute(stdin, stdout *bytes.Buffer){
     //Implement taking data from stdin and put in stdout.
 }   
 ```
@@ -33,12 +33,12 @@ We will perform following operations:
 ```Node 1 ```
 
 	
-	type GetURL struct {
+	type GetURLExecuter struct {
 		url string
 	}
 
 	//Execute will take input/output from stdin/stdout and get data from URL. 
-	func (g *GetURL) Execute(stdin, stdout *bytes.Buffer) error {
+	func (g *GetURLExecuter) Execute(stdin, stdout *bytes.Buffer) error {
 		cmd := exec.Command("curl", g.url)
 		cmd.Stdin = stdin
 		cmd.Stdout = stdout
@@ -53,13 +53,13 @@ We will perform following operations:
 ```Node 2 ```
 
 	
-	//OsCommand takes array of commands
-	type OsCommand struct {
+	//OsCommandExecuter takes array of commands
+	type OsCommandExecuter struct {
 		cmd []string
 	}
 
 	//Execute takes input/output from stdin/stdout, runs the os command. 
-	func (o *OsCommand) Execute(stdin, stdout *bytes.Buffer) error {
+	func (o *OsCommandExecuter) Execute(stdin, stdout *bytes.Buffer) error {
 		cmd := exec.Command(o.cmd[0], o.cmd[1:]...)
 		cmd.Stdin = stdin
 		cmd.Stdout = stdout
@@ -75,12 +75,12 @@ We will perform following operations:
 Link the defined nodes and run the pipe. 
 
 ```
-states := []pipes.Commander{
+nodes := []pipes.Executer{
 			&GetURL{url: "https://curl.haxx.se"},
 			&OsCommand{cmd: []string{"grep", "curl"}},
 }
 
-pipe := pipes.NewPipeline(states)
+pipe := pipes.NewPipeline(nodes)
 out:= pipe.Run()
 ```
 
