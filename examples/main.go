@@ -6,30 +6,33 @@ import (
 	"fmt"
 	"os/exec"
 
-	"github.com/pipes"
+	pipes ".."
 )
 
 func main() {
-	states := []pipes.Commander{
-		&GetURL{url: "https://curl.haxx.se"},
-		&OsCommand{cmd: []string{"grep", "curl"}},
+
+	executers := []pipes.Executer{
+		&GetURLExecuter{url: "https://curl.haxx.se"},
+		&OSCmdExecuter{cmd: []string{"grep", "img"}},
 	}
-	//Create a pipeline for executing commands
-	pipe := pipes.NewPipeline(states)
+
+	pipe := pipes.NewPipeline(executers)
+
 	out, err := pipe.Run()
 	if err.Error() != "" {
 		fmt.Println(err.Error())
 	}
+
 	fmt.Println(out)
 }
 
-//OsCommand ...
-type OsCommand struct {
+//OSCmdExecuter implements pipes.Executer
+type OSCmdExecuter struct {
 	cmd []string
 }
 
-//Execute ...
-func (o *OsCommand) Execute(stdin, stdout *bytes.Buffer) error {
+//Execute executes os command
+func (o *OSCmdExecuter) Execute(stdin, stdout *bytes.Buffer) error {
 	cmd := exec.Command(o.cmd[0], o.cmd[1:]...)
 	cmd.Stdin = stdin
 	cmd.Stdout = stdout
@@ -40,13 +43,13 @@ func (o *OsCommand) Execute(stdin, stdout *bytes.Buffer) error {
 	return nil
 }
 
-//GetURL ...
-type GetURL struct {
+//GetURLExecuter implements pipes.Executer
+type GetURLExecuter struct {
 	url string
 }
 
-//Execute ...
-func (g *GetURL) Execute(stdin, stdout *bytes.Buffer) error {
+//Execute gets url
+func (g *GetURLExecuter) Execute(stdin, stdout *bytes.Buffer) error {
 	cmd := exec.Command("curl", g.url)
 	cmd.Stdin = stdin
 	cmd.Stdout = stdout
