@@ -12,52 +12,52 @@ const (
 	buffSize                = 10000
 )
 
-//Common stderr channel for pipeline
-var stdErrChan = make(chan *bytes.Buffer)
+var pipeErrChan = make(chan *bytes.Buffer)
 
-//Commander interfaces the execute of each node
-type Commander interface {
-	Execute(stdin, stdout *bytes.Buffer) error
-}
-
-//Pipeline contains [][]commands and buffer for entire pipeline to store errors.
+/*
+Pipeline pipes nodes together
+*/
 type Pipeline struct {
-	commands []Commander
-	stderr   *bytes.Buffer
+	nodes   []Node
+	links   []chan *bytes.Buffer
+	pipeErr *bytes.Buffer
 }
 
-//NewPipeline intializes a Pipeline struct
-func NewPipeline(commands []Commander) *Pipeline {
+// NewPipeline creates nodes, its links and std err
+func NewPipeline(executers []Executer) *Pipeline {
+	nodeLinks, _ := makeLinks(len(executers))
+
+	nodes := make([]Node, 0)
+	for _, exec := range executers {
+		node, err := NewNodeState(exec)
+		if err != nil {
+			return nil
+		}
+		nodes = append(nodes, node)
+	}
+
 	return &Pipeline{
-		commands: commands,
-		stderr:   new(bytes.Buffer),
+		nodes:   nodes,
+		links:   nodeLinks,
+		pipeErr: new(bytes.Buffer),
 	}
 }
 
-//Run starts the execution of the pipeline by creating
-//n nodes and n+1 channels which connects the nodes.
+/*
+Run executes the pipe nodes with IP and OP links
+*/
 func (p *Pipeline) Run() (string, error) {
-	//defines number of nodes of pipe
-	numOfCommands := len(p.commands)
-	if numOfCommands == 0 {
-		return "", errors.New(commandNil)
+
+	// start the pipe by blank stdin
+	go firstStdin(p.links[0])
+
+	lastCh := 0
+	for index, node := range p.nodes {
+		go nodeExecute(node, p.links[index], p.links[index+1], p.pipeErr)
+		lastCh = index + 1
 	}
 
-	//make channel to link states
-	channels, err := makeChannels(numOfCommands)
-	if err != nil {
-		return "", errors.New(err.Error())
-	}
-
-	//start the pipe by blank stdin
-	go firstStdin(&channels[0])
-	temp := 0
-	for index, cmd := range p.commands {
-		//new struct for each command with input channels[i] as input and channels[i+1] as outputs
-		//pipeline stderr is comman buffer for storing errors.
-		go cmdExecute(cmd, &channels[index], &channels[index+1], p.stderr)
-		temp = index + 1
-	}
+	//OUTPUT
 
 	//There can be two outputs
 	//1. from stdout
@@ -66,17 +66,17 @@ func (p *Pipeline) Run() (string, error) {
 	e := make([]byte, buffSize)
 
 	//retrieve stdout
-	f := <-channels[temp]
+	f := <-p.links[lastCh]
 	f.Read(o)
 
 	//retrieve stderr
-	p.stderr.Read(e)
+	p.pipeErr.Read(e)
 
 	return string(o), errors.New(string(e))
 }
 
-//makeChannels initializes n+1 number of channels for n commands.
-func makeChannels(n int) ([]chan *bytes.Buffer, error) {
+//makeLinks initializes n+1 number of channels for n executers.
+func makeLinks(n int) ([]chan *bytes.Buffer, error) {
 	//error checking
 	if n == 0 {
 		return nil, errors.New(commandNil)
@@ -92,31 +92,25 @@ func makeChannels(n int) ([]chan *bytes.Buffer, error) {
 	return channels, nil
 }
 
-//cmdExecute takes care for execution of each command.
-func cmdExecute(command Commander, ip, op *chan *bytes.Buffer, stderr *bytes.Buffer) {
-	//create node
-	node, err := NewNode(command, stderr)
-	if err != nil {
-		commitError(err, stderr)
-	}
-
+//nodeExecute takes care for execution of each node.
+func nodeExecute(node Node, ip, op chan *bytes.Buffer, stderr *bytes.Buffer) {
 	//input
-	if err = node.Input(ip); err != nil {
+	if err := node.Input(ip); err != nil {
 		commitError(err, stderr)
 	}
 
 	//process
-	if err = node.Process(); err != nil {
+	if err := node.Process(); err != nil {
 		commitError(err, stderr)
 	}
 
 	//output
-	if err = node.Output(op); err != nil {
+	if err := node.Output(op); err != nil {
 		commitError(err, stderr)
 	}
 }
 
-//commit error of node
+//commit error logs to pipe error buffer
 func commitError(err error, stderr *bytes.Buffer) {
 	_, e := stderr.Write([]byte(err.Error()))
 	if e != nil {
@@ -125,7 +119,7 @@ func commitError(err error, stderr *bytes.Buffer) {
 }
 
 //firstStdin initializes first cmd's IP buffer.
-func firstStdin(channel *chan *bytes.Buffer) {
+func firstStdin(channel chan *bytes.Buffer) {
 	b := new(bytes.Buffer)
-	*channel <- b
+	channel <- b
 }

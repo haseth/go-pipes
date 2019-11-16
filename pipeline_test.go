@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestMakeChannel(t *testing.T) {
+func TestMakeLinks(t *testing.T) {
 	t.Run("Testing with 10 values", func(t *testing.T) {
 		numChannels(t, "", 10)
 	})
@@ -20,41 +20,37 @@ func TestMakeChannel(t *testing.T) {
 	})
 
 }
-func numChannels(t *testing.T, msg string, value int) {
-	t.Helper()
-	numofCmd := value
-	gotChan, err := makeChannels(numofCmd)
-	if err != nil {
-		if err.Error() != msg {
-			t.Fatalf("Should have received an error, got %s, wanted %s", err.Error(), msg)
-		}
-	} else {
-		got := len(gotChan)
-		want := value + 1
-		//should be numOfCmd +1  channels
-		if got != want {
-			t.Fatalf("Num of channels should be num of cmd +1 got: %d want : %d ", got, want)
-		}
-	}
-}
+
 func TestCommandExecute(t *testing.T) {
 	stdErr := new(bytes.Buffer)
-	commander := &OsExec{Cmds: []string{"echo", "hello"}}
+
+	executer := &OsExec{Cmds: []string{"echo", "hello"}}
+	node, err := NewNodeState(executer)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	ipChan := make(chan *bytes.Buffer)
 	opChan := make(chan *bytes.Buffer)
 
 	t.Run("Checking with correct command", func(t *testing.T) {
-		execCmd(t, &ipChan, &opChan, stdErr, commander, "hello")
+		execCmd(t, &ipChan, &opChan, stdErr, node, "hello")
 	})
-	commander = &OsExec{Cmds: []string{"lsw"}}
+
+	executer = &OsExec{Cmds: []string{"lsw"}}
+	node, err = NewNodeState(executer)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	t.Run("Checking with incorrect command", func(t *testing.T) {
-		execCmd(t, &ipChan, &opChan, stdErr, commander, commandNotFound)
+		execCmd(t, &ipChan, &opChan, stdErr, node, commandNotFound)
 	})
 }
-func execCmd(t *testing.T, ipChan, opChan *chan *bytes.Buffer, stdErr *bytes.Buffer, cmd Commander, want string) {
+func execCmd(t *testing.T, ipChan, opChan *chan *bytes.Buffer, stdErr *bytes.Buffer, node Node, want string) {
 	t.Helper()
-	go firstStdin(ipChan)
-	go cmdExecute(cmd, ipChan, opChan, stdErr)
+	go firstStdin(*ipChan)
+	go nodeExecute(node, *ipChan, *opChan, stdErr)
 	gotBuffer := <-*opChan
 
 	got := gotBuffer.String()
@@ -71,7 +67,7 @@ func execCmd(t *testing.T, ipChan, opChan *chan *bytes.Buffer, stdErr *bytes.Buf
 }
 
 func TestRunWithCorrectCommand(t *testing.T) {
-	commands := []Commander{
+	commands := []Executer{
 		&OsExec{[]string{"echo", "hello"}},
 	}
 	want := "hello"
@@ -86,7 +82,7 @@ func TestRunWithCorrectCommand(t *testing.T) {
 }
 
 func TestRunWithInCorrectCommand(t *testing.T) {
-	commands := []Commander{
+	commands := []Executer{
 		&OsExec{[]string{"lsw", "hello"}},
 	}
 	want := commandNotFound
@@ -134,3 +130,22 @@ func TestRunWithInCorrectCommand(t *testing.T) {
 // 	}
 
 // }
+
+// helper
+func numChannels(t *testing.T, msg string, value int) {
+	t.Helper()
+	numofCmd := value
+	gotChan, err := makeLinks(numofCmd)
+	if err != nil {
+		if err.Error() != msg {
+			t.Fatalf("Should have received an error, got %s, wanted %s", err.Error(), msg)
+		}
+	} else {
+		got := len(gotChan)
+		want := value + 1
+		//should be numOfCmd +1  channels
+		if got != want {
+			t.Fatalf("Num of channels should be num of cmd +1 got: %d want : %d ", got, want)
+		}
+	}
+}
